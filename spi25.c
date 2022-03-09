@@ -302,6 +302,28 @@ int probe_spi_at25f(struct flashctx *flash)
 	return 0;
 }
 
+#define MT25Q_RESET_ENABLE 0x66
+#define MT25Q_RESET_MEMORY 0x99
+
+/* Attempt to reset the flash before probing */
+int probe_spi_mt25q(struct flashctx *flash)
+{
+	static const unsigned char reset_enable_cmd[1] = { MT25Q_RESET_ENABLE };
+	static const unsigned char reset_memory_cmd[1] = { MT25Q_RESET_MEMORY };
+
+	if (spi_send_command(flash, sizeof(reset_enable_cmd), 0, reset_enable_cmd, NULL)) {
+		printf("Error sending reset enable command\n");
+		return 0;
+	}
+
+	if (spi_send_command(flash, sizeof(reset_memory_cmd), 0, reset_memory_cmd, NULL)) {
+		printf("Error sending reset memory command\n");
+		return 0;
+	}
+
+	return probe_spi_rdid_generic(flash, 3);
+}
+
 static int spi_poll_wip(struct flashctx *const flash, const unsigned int poll_delay)
 {
 	/* FIXME: We can't tell if spi_read_status_register() failed. */

@@ -35,6 +35,7 @@ int probe_spi_res1(struct flashctx *flash);
 int probe_spi_res2(struct flashctx *flash);
 int probe_spi_res3(struct flashctx *flash);
 int probe_spi_at25f(struct flashctx *flash);
+int probe_spi_mt25q(struct flashctx *flash);
 int spi_write_enable(struct flashctx *flash);
 int spi_write_disable(struct flashctx *flash);
 int spi_block_erase_20(struct flashctx *flash, unsigned int addr, unsigned int blocklen);
