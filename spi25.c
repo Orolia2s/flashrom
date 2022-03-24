@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include "flash.h"
 #include "flashchips.h"
 #include "chipdrivers.h"
@@ -155,6 +156,7 @@ static int compare_id(const struct flashctx *flash, uint32_t id1, uint32_t id2)
 
 	return 0;
 }
+
 
 static int probe_spi_rdid_generic(struct flashctx *flash, int bytes)
 {
@@ -304,12 +306,26 @@ int probe_spi_at25f(struct flashctx *flash)
 
 #define MT25Q_RESET_ENABLE 0x66
 #define MT25Q_RESET_MEMORY 0x99
+#define MT25Q_WRITE_ENABLE 0x06
+#define MT25Q_WRITE_STATUS_REGISTER 0x01
+#define MT25Q_WRITE_NVM_CONFIG 0xB1
+#define MT25Q_WRITE_CONFIG 0x81
+#define MT25Q_WRITE_ENHANCED_CONFIG 0x61
+#define MT25Q_WRITE_4_BYTES_ADDR 0xB7
 
 /* Attempt to reset the flash before probing */
 int probe_spi_mt25q(struct flashctx *flash)
 {
 	static const unsigned char reset_enable_cmd[1] = { MT25Q_RESET_ENABLE };
 	static const unsigned char reset_memory_cmd[1] = { MT25Q_RESET_MEMORY };
+	static const unsigned char write_enable[1] = { MT25Q_WRITE_ENABLE };
+	static const unsigned char write_status_register[2] = { MT25Q_WRITE_STATUS_REGISTER, 0x00 };
+	static const unsigned char write_nvm_config[3] = { MT25Q_WRITE_NVM_CONFIG, 0xEE, 0xFF };
+	static const unsigned char write_config[2] = { MT25Q_WRITE_CONFIG, 0xFB };
+	static const unsigned char write_enhanced_config[2] = { MT25Q_WRITE_ENHANCED_CONFIG, 0xFF };
+	static const unsigned char write_4_bytes_address[1] = { MT25Q_WRITE_4_BYTES_ADDR };
+
+	int ret;
 
 	if (spi_send_command(flash, sizeof(reset_enable_cmd), 0, reset_enable_cmd, NULL)) {
 		printf("Error sending reset enable command\n");
@@ -321,6 +337,54 @@ int probe_spi_mt25q(struct flashctx *flash)
 		return 0;
 	}
 
+	if (spi_send_command(flash, sizeof(write_enable), 0, write_enable, NULL)) {
+		printf("Error sending write_enable command\n");
+		return 0;
+	}
+	if (spi_send_command(flash, sizeof(write_status_register), 0, write_status_register, NULL)) {
+		printf("Error sending write_status_register command\n");
+		return 0;
+	}
+	usleep(15000);
+
+	if (spi_send_command(flash, sizeof(write_enable), 0, write_enable, NULL)) {
+		printf("Error sending write_enable command\n");
+		return 0;
+	}
+	if (spi_send_command(flash, sizeof(write_nvm_config), 0, write_nvm_config, NULL)) {
+		printf("Error sending write_nvm_config command\n");
+		return 0;
+	}
+	usleep(20000);
+
+	if (spi_send_command(flash, sizeof(write_enable), 0, write_enable, NULL)) {
+		printf("Error sending write_enable command\n");
+		return 0;
+	}
+	if (spi_send_command(flash, sizeof(write_config), 0, write_config, NULL)) {
+		printf("Error sending write_config command\n");
+		return 0;
+	}
+	usleep(1);
+
+	if (spi_send_command(flash, sizeof(write_enable), 0, write_enable, NULL)) {
+		printf("Error sending write_enable command\n");
+		return 0;
+	}
+	if (spi_send_command(flash, sizeof(write_enhanced_config), 0, write_enhanced_config, NULL)) {
+		printf("Error sending write_enhanced_config command\n");
+		return 0;
+	}
+	usleep(1);
+	if (spi_send_command(flash, sizeof(write_enable), 0, write_enable, NULL)) {
+		printf("Error sending write_enable command\n");
+		return 0;
+	}
+	if (spi_send_command(flash, sizeof(write_4_bytes_address), 0, write_4_bytes_address, NULL)) {
+		printf("Error sending write_4_bytes_address command\n");
+		return 0;
+	}
+	usleep(10);
 	return probe_spi_rdid_generic(flash, 3);
 }
 
