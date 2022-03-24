@@ -316,24 +316,12 @@ int probe_spi_at25f(struct flashctx *flash)
 /* Attempt to reset the flash before probing */
 int probe_spi_mt25q(struct flashctx *flash)
 {
-	static const unsigned char reset_enable_cmd[1] = { MT25Q_RESET_ENABLE };
-	static const unsigned char reset_memory_cmd[1] = { MT25Q_RESET_MEMORY };
 	static const unsigned char write_enable[1] = { MT25Q_WRITE_ENABLE };
 	static const unsigned char write_status_register[2] = { MT25Q_WRITE_STATUS_REGISTER, 0x00 };
 	static const unsigned char write_nvm_config[3] = { MT25Q_WRITE_NVM_CONFIG, 0xEE, 0xFF };
 	static const unsigned char write_config[2] = { MT25Q_WRITE_CONFIG, 0xFB };
 	static const unsigned char write_enhanced_config[2] = { MT25Q_WRITE_ENHANCED_CONFIG, 0xFF };
 	static const unsigned char write_4_bytes_address[1] = { MT25Q_WRITE_4_BYTES_ADDR };
-
-	if (spi_send_command(flash, sizeof(reset_enable_cmd), 0, reset_enable_cmd, NULL)) {
-		printf("Error sending reset enable command\n");
-		return 0;
-	}
-
-	if (spi_send_command(flash, sizeof(reset_memory_cmd), 0, reset_memory_cmd, NULL)) {
-		printf("Error sending reset memory command\n");
-		return 0;
-	}
 
 	if (spi_send_command(flash, sizeof(write_enable), 0, write_enable, NULL)) {
 		printf("Error sending write_enable command\n");
@@ -382,17 +370,8 @@ int probe_spi_mt25q(struct flashctx *flash)
 		printf("Error sending write_4_bytes_address command\n");
 		return 0;
 	}
-	usleep(10);
-	if (spi_send_command(flash, sizeof(reset_enable_cmd), 0, reset_enable_cmd, NULL)) {
-		printf("Error sending reset enable command\n");
-		return 0;
-	}
+	usleep(1000);
 
-	if (spi_send_command(flash, sizeof(reset_memory_cmd), 0, reset_memory_cmd, NULL)) {
-		printf("Error sending reset memory command\n");
-		return 0;
-	}
-	usleep(1000000);
 	return probe_spi_rdid_generic(flash, 3);
 }
 
