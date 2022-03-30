@@ -304,6 +304,13 @@ int probe_spi_at25f(struct flashctx *flash)
 	return 0;
 }
 
+#define MT25Q_READ_STATUS_REGISTER 0x05
+#define MT25Q_READ_FLAG_STATUS_REGISTER 0x70
+#define MT25Q_READ_NVM_CONFIG_REGISTER 0xB5
+#define MT25Q_READ_VOLATILE_CONFIG_REGISTER 0x85
+#define MT25Q_READ_ENHANCED_VOLATILE_CONFIG_REGISTER 0x65
+#define MT25Q_READ_EXTENDED_ADDRESS_REGISTER 0xC8
+
 #define MT25Q_RESET_ENABLE 0x66
 #define MT25Q_RESET_MEMORY 0x99
 #define MT25Q_WRITE_ENABLE 0x06
@@ -313,15 +320,73 @@ int probe_spi_at25f(struct flashctx *flash)
 #define MT25Q_WRITE_ENHANCED_CONFIG 0x61
 #define MT25Q_WRITE_4_BYTES_ADDR 0xB7
 
+static int read_registers(struct flashctx *flash)
+{
+	const unsigned char read_status_register[1] = {MT25Q_READ_STATUS_REGISTER };
+	const unsigned char read_flag_status_register[1] = {MT25Q_READ_FLAG_STATUS_REGISTER };
+	const unsigned char read_nvm_config_register[1] = {MT25Q_READ_NVM_CONFIG_REGISTER };
+	const unsigned char read_volatile_config_register[1] = {MT25Q_READ_VOLATILE_CONFIG_REGISTER };
+	const unsigned char read_enhanced_volatile_config_register[1] = {MT25Q_READ_ENHANCED_VOLATILE_CONFIG_REGISTER };
+	const unsigned char read_extended_adress_register[1] = {MT25Q_READ_EXTENDED_ADDRESS_REGISTER };
+
+	unsigned char read_status_reg = 0;
+	unsigned char read_flag_status_reg = 0;
+	unsigned char nvm_config_register[2] = { 0 };
+	unsigned char volatile_config_reg = 0;
+	unsigned char enhanced_volatile_config_reg = 0;
+	unsigned char extended_adress_config_reg = 0;
+
+	printf("Reading registers\n");
+	if (spi_send_command(flash, sizeof(read_status_register), 1, read_status_register, &read_status_reg)) {
+		printf("Error reading register\n");
+		return 0;
+	}
+	printf("Read status reg: 0x%x\n", read_status_reg);
+	if (spi_send_command(flash, sizeof(read_flag_status_register), 1, read_flag_status_register, &read_flag_status_reg)) {
+		printf("Error reading register\n");
+		return 0;
+	}
+	printf("Read flag status reg: 0x%x\n", read_flag_status_reg);
+	if (spi_send_command(flash, sizeof(read_nvm_config_register), 2, read_nvm_config_register, (unsigned char *) &nvm_config_register)) {
+		printf("Error reading register\n");
+		return 0;
+	}
+	printf("NVM config reg: 0x%x 0x%x\n", nvm_config_register[0], nvm_config_register[1]);
+
+
+	if (spi_send_command(flash, sizeof(read_volatile_config_register), 1, read_volatile_config_register, &volatile_config_reg)) {
+		printf("Error reading register\n");
+		return 0;
+	}
+	printf("Volatile config reg: 0x%x\n", volatile_config_reg);
+	if (spi_send_command(flash, sizeof(read_enhanced_volatile_config_register), 1, read_enhanced_volatile_config_register, &enhanced_volatile_config_reg)) {
+		printf("Error reading register\n");
+		return 0;
+	}
+	printf("Enhanced volatile config reg: 0x%x\n", enhanced_volatile_config_reg);
+	if (spi_send_command(flash, sizeof(read_extended_adress_register), 1, read_extended_adress_register, &extended_adress_config_reg)) {
+		printf("Error reading register\n");
+		return 0;
+	}
+	printf("Extended config reg: 0x%x\n\n\n", extended_adress_config_reg);
+	return 0;
+}
+
 /* Attempt to reset the flash before probing */
 int probe_spi_mt25q(struct flashctx *flash)
 {
-	static const unsigned char write_enable[1] = { MT25Q_WRITE_ENABLE };
-	static const unsigned char write_status_register[2] = { MT25Q_WRITE_STATUS_REGISTER, 0x00 };
-	static const unsigned char write_nvm_config[3] = { MT25Q_WRITE_NVM_CONFIG, 0xEE, 0xFF };
-	static const unsigned char write_config[2] = { MT25Q_WRITE_CONFIG, 0xFB };
-	static const unsigned char write_enhanced_config[2] = { MT25Q_WRITE_ENHANCED_CONFIG, 0xFF };
-	static const unsigned char write_4_bytes_address[1] = { MT25Q_WRITE_4_BYTES_ADDR };
+
+
+	const unsigned char reset_enable[1] = { MT25Q_RESET_ENABLE };
+	const unsigned char reset_memory[1] = { MT25Q_RESET_MEMORY };
+	const unsigned char write_enable[1] = { MT25Q_WRITE_ENABLE };
+	const unsigned char write_status_register[2] = { MT25Q_WRITE_STATUS_REGISTER, 0x00 };
+	const unsigned char write_nvm_config[3] = { MT25Q_WRITE_NVM_CONFIG, 0xEE, 0xFF };
+	const unsigned char write_config[2] = { MT25Q_WRITE_CONFIG, 0xFB };
+	const unsigned char write_enhanced_config[2] = { MT25Q_WRITE_ENHANCED_CONFIG, 0xFF };
+	const unsigned char write_4_bytes_address[1] = { MT25Q_WRITE_4_BYTES_ADDR };
+
+	read_registers(flash);
 
 	if (spi_send_command(flash, sizeof(write_enable), 0, write_enable, NULL)) {
 		printf("Error sending write_enable command\n");
@@ -362,6 +427,17 @@ int probe_spi_mt25q(struct flashctx *flash)
 		return 0;
 	}
 	usleep(1);
+
+	if (spi_send_command(flash, sizeof(reset_enable), 0, reset_enable, NULL)) {
+		printf("Error sending write_enable command\n");
+		return 0;
+	}
+	if (spi_send_command(flash, sizeof(reset_memory), 0, reset_memory, NULL)) {
+		printf("Error sending write_enhanced_config command\n");
+		return 0;
+	}
+	usleep(2000000);
+
 	if (spi_send_command(flash, sizeof(write_enable), 0, write_enable, NULL)) {
 		printf("Error sending write_enable command\n");
 		return 0;
@@ -370,7 +446,10 @@ int probe_spi_mt25q(struct flashctx *flash)
 		printf("Error sending write_4_bytes_address command\n");
 		return 0;
 	}
-	usleep(1000);
+	usleep(10000);
+
+	read_registers(flash);
+
 
 	return probe_spi_rdid_generic(flash, 3);
 }
